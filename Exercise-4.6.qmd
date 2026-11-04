@@ -1,0 +1,102 @@
+---
+title: "Exercise-4.6"
+format: html
+author: Samuel Scott
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(glue)
+library(tsibbledata)
+library(fpp3)
+library(ggplot2)
+library(broom)
+data(PBS)
+```
+
+1\. Write a function to compute the mean and standard deviation of a time series, and apply it to the PBS data. Plot the series with the highest mean, and the series with the lowest standard deviation.
+
+```{r}
+#Get function and create mean and std dev variables for plotting
+mean_sd <- function(x) {
+  c(mean = mean(x, na.rm=TRUE), 
+    sd=sd(x, na.rm=TRUE))
+}
+
+pbs_stats <- PBS |>
+  features(Cost, mean_sd)
+```
+
+```{r}
+#Filter highest mean value and lowest non-zero std deviation value and plot it
+max_mean <- pbs_stats |>
+  filter(mean == max(mean))
+
+min_sd <- pbs_stats |>
+  filter(sd > 0) |>
+  filter(sd == min(sd))
+```
+
+```{r}
+PBS |> 
+  filter(Concession == max_mean$Concession, Type == max_mean$Type, ATC1 ==    max_mean$ATC1, ATC2 == max_mean$ATC2) |>
+  
+  autoplot(Cost) + 
+    labs(title = "PBS series with the highest mean Cost")
+```
+
+```{r}
+PBS |>
+  semi_join(min_sd, by = c("Concession", "Type", "ATC1", "ATC2")) |>
+  autoplot(Cost) +
+  labs(title = "PBS series with the lowest std dev Cost")
+
+```
+
+2\. Use GGally::ggpairs() to look at the relationships between the STL-based features for the holiday series in the tourism data. Change seasonal_peak_year and seasonal_trough_year to factors, as shown in Figure 4.3.Which is the peak quarter for holidays in each state?
+
+```{r}
+data(tourism)
+# View(tourism)
+
+holiday_features <- tourism |> 
+  filter(Purpose == "Holiday") |>
+  features(Trips, feat_stl) |>
+  mutate(
+    seasonal_peak_year = factor(seasonal_peak_year),
+    seasonal_trough_year = factor(seasonal_trough_year)
+  ) 
+
+holiday_features |>
+  select(-Region, -Purpose) |>
+  GGally::ggpairs(mapping=aes(colour=State))
+  
+holiday_features |>
+  count(State, seasonal_peak_year) |>
+  group_by(State) |>
+  slice_max(n, n = 1)  # keep the most common peak value in each state
+```
+
+3\. Use a feature-based approach to look for outlying series in the PBS data. What is unusual about the series you identify as “outliers”?
+
+ropped
+
+```{r}
+pcs <- PBS_features |>
+  select(-Concession, -Type, -ATC1, -ATC2) |>
+  prcomp(scale = TRUE) |>
+  augment(PBS_features)
+pcs
+
+pcs |>
+  ggplot(aes(x = .fittedPC1, y= .fittedPC2, colour = Type)) + geom_point() + theme(aspect.ratio = 1)
+
+
+outliers <- pcs |>
+  filter(.fittedPC2 < -10) |>
+  select(Concession, Type, ATC1, ATC2, .fittedPC1, .fittedPC2)
+outliers
+```
+
+What is unusual is that all outliers have a very high PC1 value and that one of the outliers is a safety net which tends to cluster together more often.

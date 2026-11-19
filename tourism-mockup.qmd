@@ -23,22 +23,34 @@ data <- tourism |>
 train_cutoff <- yearquarter("2017 Jan 01")
 ```
 
+## Tab1 - Visualization
+
 ## Data visualization
+
+*Inputs = multiselect for Purpose
+*Train date cutoff - default to 1 year prior to the max date
 
 ```{r}
 #visualize the data with autoplot by purpose
- data |>
-   autoplot(Trips) + 
-   labs(y = "Trips", title = "Tourism data") +
-   facet_wrap(~Purpose, ncol = 1, scales = "free_y") +
-   theme_minimal()
- 
-
 data_train <- data |>
   filter(Quarter < train_cutoff)
+
+data |>
+  autoplot(Trips) +
+  labs(y = "Trips", title = "Tourism data") +
+  geom_vline(xintercept = as.Date(train_cutoff), color = "red", linetype = "dashed") +
+  facet_wrap(~Purpose, ncol = 1, scales = "free_y") +
+  theme_minimal()
+ 
 ```
 
-## Model fitting
+## Tab 2 - Model Building
+
+Inputs:
+*Toggle for model specification (default off)
+*Toggle training accuracy (default off)
+
+### Model fitting
 
 Build multiple models for the Purpose using Auto ARIMA and ETS
 ```{r}
@@ -47,6 +59,7 @@ fit <- data_train |>
     arima = ARIMA(Trips),
     ets = ETS(Trips)
   )
+fit # output the model specifications
 ```
 
 
@@ -64,7 +77,7 @@ fit |>
   tab_source_note("Source: Tourism data")
 ```
 
-## Forecast accuracy
+### Forecast accuracy
 
 ```{r}
 fc <- fit |>
@@ -80,7 +93,13 @@ fc |>
   tab_source_note("Source: Tourism data")
 ```
 
-## Forecast visualization
+## Tab3 - Forecast
+
+Inputs:
+
+* Select the model for the Forecast Table
+
+### Forecast visualization
 
 
 ```{r}

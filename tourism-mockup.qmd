@@ -27,11 +27,12 @@ train_cutoff <- yearquarter("2017 Jan 01")
 
 ```{r}
 #visualize the data with autoplot by purpose
-data |>
-  autoplot(Trips) + 
-  labs(y = "Trips", title = "Tourism data") +
-  facet_wrap(~Purpose, ncol = 1) +
-  theme_minimal()
+ data |>
+   autoplot(Trips) + 
+   labs(y = "Trips", title = "Tourism data") +
+   facet_wrap(~Purpose, ncol = 1, scales = "free_y") +
+   theme_minimal()
+ 
 
 data_train <- data |>
   filter(Quarter < train_cutoff)
@@ -92,3 +93,13 @@ fc |>
 ```
 
 ## Report generation
+
+
+```{r}
+fc |>
+  filter(.model == 'arima') |>
+  as_tibble() |>
+  select(Purpose, .model, Quarter, .mean) |>
+  pivot_wider(names_from = Quarter, values_from = .mean) |>
+  gt() |> fmt_number(decimals = 0)
+```

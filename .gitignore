@@ -6,3 +6,5 @@
 *_files/
 *.html
 neiss
+**/*_files
+**/*.html

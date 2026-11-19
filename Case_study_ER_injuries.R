@@ -39,7 +39,7 @@ population
 
 toilet_injur <- injuries |>
   filter(prod_code == 649)
-  nrow(selected)
+  nrow(toilet_injur)
   
 # Perform some basic summaries looking at the location, body part,
 # and diagnosis of toilet related injuries.
@@ -82,8 +82,68 @@ toilet_injur |>
   sample_n(10) |> 
   pull(narrative)
 
+#Finding a balance between making your app to simple or too complex at the
+#start can lead to some design issues later on. Finding the middle ground is 
+#ideal. Drawing the design of the app on pen and paper is a good way to remedy
+#this.
+
+prod_codes <- setNames(products$prod_code, products$title)
+
+ui <- fluidPage(
+  fluidRow(
+    column(6,
+           selectInput("code", "Product", choices = prod_codes)
+    )
+  ),
+  fluidRow(
+    column(4, tableOutput("diag")),
+    column(4, tableOutput("body_part")),
+    column(4, tableOutput("location"))
+  ),
+  fluidRow(
+    column(12, plotOutput("age_sex"))
+  )
+)
+
+#Convert the toliet_injur and summary variables so they are work with the 
+#server. Cleaning the EDA code before running it to server side on the app is
+#good practice!
+
+server <- function(input, output, session) {
+  toilet_injur <- reactive(injuries |> filter(prod_code == input$code))
+  
+  output$diag <- renderTable(
+    toilet_injur() |> count(diag, wt = weight, sort = TRUE)
+  )
+  output$body_part <- renderTable(
+    toilet_injur() |> count(body_part, wt = weight, sort = TRUE)
+  )
+  output$location <- renderTable(
+    toilet_injur() |> count(location, wt = weight, sort = TRUE)
+  )
+  
+  summary <- reactive({
+    toilet_injur() |>
+      count(age, sex, wt = weight) |>
+      left_join(population, by = c("age", "sex")) |>
+      mutate(rate = n / population * 1e4)
+  })
+  
+  output$age_sex <- renderPlot({
+    summary() |>
+      ggplot(aes(age, n, colour = sex)) +
+      geom_line() +
+      labs(y = "Estimated number of injuries")
+  }, res = 96)
+}
+
+shinyApp(ui, server)
 
 
+#There is a lot of information on the screen, let's reduced that to get the 
+#desired information
 
-
-
+injuries |>
+  mutate(diag = fct_lump(fct_infreq(diag), n = 5)) |>
+  group_by(diag) |>
+  summarise(n = as.integer(sum(weight)))

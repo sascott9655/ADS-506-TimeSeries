@@ -27,8 +27,12 @@ train_cutoff <- yearquarter("2017 Jan 01")
 
 ## Data visualization
 
-*Inputs = multiselect for Purpose
-*Train date cutoff - default to 1 year prior to the max date
+Inputs 
+
+*multiselect for Purpose
+*Date range
+  *First date is the Train date cutoff - default to 1 year
+  *Second date is the end of the forecast horizon - default to last date
 
 ```{r}
 #visualize the data with autoplot by purpose
@@ -46,9 +50,9 @@ data |>
 
 ## Tab 2 - Model Building
 
-Inputs:
-*Toggle for model specification (default off)
-*Toggle training accuracy (default off)
+* Inputs:
+* Toggle for model specification (default off)
+* Toggle training accuracy (default off)
 
 ### Model fitting
 
@@ -95,7 +99,7 @@ fc |>
 
 ## Tab3 - Forecast
 
-Inputs:
+* Inputs:
 
 * Select the model for the Forecast Table
 

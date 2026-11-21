@@ -27,21 +27,44 @@ library(shiny)
 ## 1. Load and wrangle
 
 ```{r}
-aus_wine <- read.csv(file.path("data", "AustralianWines.csv"))
-#Make column names more consistent so data access is easier
-aus_wine <- aus_wine |>
-    rename(
-      Sparkling = sparkling,
-      Sweet_White = Sweet.white,
-      Dry_White = Dry.white
-    )
-aus_wine
+aus_wine <- read.csv(file.path("data", "AustralianWines.csv"),
+na.strings = c("", "*", "NA", "N/A")
+)
+
+aus_wine_ts <- aus_wine |>
+  #Create the sales column frome the Varietal columns
+  pivot_longer(
+    cols      = c(Fortified, Red, Rose, sparkling, Sweet.white, Dry.white),
+    names_to  = "Varietal",
+    values_to = "Sales"
+  ) |>
+  #Convert Month text to a monthly index
+  mutate(Month = yearmonth(my(Month))) |>
+  as_tsibble(index = Month, key = Varietal) |>
+  filter(Varietal %in% c("Red", "sparkling", "Dry.white"))
+
+aus_wine_ts |>
+  autoplot(Sales)
 ```
 
+### 1.1 Missing data
 
+```{r}
+aus_wine_ts |>
+  filter(is.na(Sales)) |>
+  count(Varietal)
 
+aus_wine_ts |>
+  filter(is.na(Sales)) 
 
+has_gaps(aus_wine_ts) #no time series gaps
+```
 
+## 2. Train/test split
+
+```{r}
+
+```
 
 
 

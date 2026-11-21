@@ -12,6 +12,42 @@ execute:
   message: false
 ---
 
+## 0. Libaries
+
+```{r}
+library(fpp3)
+library(gt)
+library(readr)
+library(dplyr)
+library(lubridate)
+library(shiny)
+```
+
+
+## 1. Load and wrangle
+
+```{r}
+aus_wine <- read.csv(file.path("data", "AustralianWines.csv"))
+#Make column names more consistent so data access is easier
+aus_wine <- aus_wine |>
+    rename(
+      Sparkling = sparkling,
+      Sweet_White = Sweet.white,
+      Dry_White = Dry.white
+    )
+aus_wine
+```
+
+
+
+
+
+
+
+
+
+
+
 <!-- Keep this entire document to **≤ 2 pages** including screenshots. Remove any guidance text before submitting. -->
 
 ## Part I — Links and Description (required)

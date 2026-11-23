@@ -190,7 +190,7 @@ model rankings can change with a different split.
 
 ## Part I — Links and Description (required)
 
--   **Deployed Shiny App URL:** <https://...>
+-   **Deployed Shiny App URL:** https://connect.posit.cloud/sascott9655/content/01a209c3-803c-0cf9-f15e-95c5cbfb29f4
 -   **Code URL:** (choose one)
     -   GitHub repository: <https://github.com/...>
     -   or posit.cloud project (ensure instructor access): <https://posit.cloud/...>

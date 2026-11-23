@@ -1,0 +1,219 @@
+---
+title: "ADS 506 — Week 5 Submission: Storytelling with Shiny"
+author: "Samuel Scott"
+date: today
+format:
+  pdf:
+    toc: false
+    geometry: ["margin=1in"]
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## 0. Libaries
+
+```{r}
+library(mixtime)
+library(fpp3)
+library(gt)
+library(readr)
+library(dplyr)
+library(lubridate)
+library(shiny)
+```
+
+
+## 1. Load and wrangle
+
+```{r}
+aus_wine <- read.csv(file.path("data", "AustralianWines.csv"),
+na.strings = c("", "*", "NA", "N/A")
+)
+
+aus_wine_ts <- aus_wine |>
+  #Create the sales column frome the Varietal columns
+  pivot_longer(
+    cols      = c(Fortified, Red, Rose, sparkling, Sweet.white, Dry.white),
+    names_to  = "Varietal",
+    values_to = "Sales"
+  ) |>
+  #Convert Month text to a monthly index
+  mutate(Month = yearmonth(my(Month))) |>
+  as_tsibble(index = Month, key = Varietal) |>
+  filter(Varietal %in% c("Red", "sparkling", "Dry.white"))
+
+aus_wine_ts |>
+  autoplot(Sales)
+```
+
+### 1.1 Missing data
+
+```{r}
+aus_wine_ts |>
+  filter(is.na(Sales)) |>
+  count(Varietal)
+
+aus_wine_ts |>
+  filter(is.na(Sales)) 
+
+has_gaps(aus_wine_ts) #no time series gaps
+```
+
+## 2. Train/test split
+
+```{r}
+train_end <- 1992
+training <- aus_wine_ts|>
+  filter(year(Month) <= train_end)
+validation <- aus_wine_ts |>
+  filter(year(Month) > train_end) 
+```
+
+## 3. Modeling
+
+```{r}
+#Dry white
+fit_dry_white <- training |>
+  filter(Varietal == "Dry.white") |>
+  model(
+    lm_dry_white = TSLM(Sales ~ trend() + season()),
+    ets_dry_white = ETS(Sales),
+    arima_dry_white = ARIMA(Sales)
+  )
+
+#Red
+fit_red <- training |>
+  filter(Varietal == "Red") |>
+  model(
+    lm_red = TSLM(Sales ~ trend() + season()),
+    ets_red = ETS(Sales),
+    arima_red = ARIMA(Sales)
+  )
+
+fit_sparkling <- training |>
+  filter(Varietal == "sparkling") |>
+  model(
+    lm_sparkling = TSLM(Sales ~ trend() + season()),
+    ets_sparkling = ETS(Sales),
+    arima_sparkling = ARIMA(Sales)
+  )
+```
+
+```{r}
+# Combine the per-varietal fits, using common model names
+strip_suffix <- \(x) sub("_(dry_white|red|sparkling)$", "", x)
+
+fit_all <- bind_rows(
+  rename_with(fit_dry_white, strip_suffix, -Varietal),
+  rename_with(fit_red, strip_suffix, -Varietal),
+  rename_with(fit_sparkling, strip_suffix, -Varietal)
+)
+fit_all
+```
+
+## 4. Forecast
+
+```{r}
+h_val <- 24 #2 years of forecasting
+
+fc_val <- fit_all |>
+  forecast(h = h_val)
+```
+
+## 5. Evaluate
+
+```{r}
+# Score only the months that have actuals (the validation year)
+fc_scored <- fc_val |>
+  filter(Month <= max(validation$Month))
+
+accuracy(fit_all) |>
+  arrange(Varietal, RMSE) |>
+  select(Varietal, .model, RMSE, MAE, MPE, MAPE) |>
+  gt(groupname_col = "Varietal") |> fmt_number(
+    decimals = 2
+  ) |>
+  tab_header(title = "Training Accuracy") |>
+  tab_source_note("Source Australian Wine Data")
+```
+
+```{r}
+validation_acc <- accuracy(fc_scored, aus_wine_ts)
+
+# Best model per varietal by validation RMSE
+best_models <- validation_acc |>
+  slice_min(RMSE, by = Varietal) |>
+  select(Varietal, .model)
+
+validation_acc |>
+  arrange(Varietal, RMSE) |>
+  select(Varietal, .model, RMSE, MAE, MPE, MAPE) |>
+  gt(groupname_col = "Varietal") |> fmt_number(
+    decimals = 2
+  ) |>
+  tab_header(title = "Validation Accuracy") |>
+  tab_source_note("Source Australian Wine Data")
+```
+
+## 6. Visualize
+
+```{r}
+fc_scored |>
+  semi_join(best_models, by = c("Varietal", ".model")) |>
+  autoplot(filter(aus_wine_ts, year(Month) >= 1990)) +
+  facet_wrap(~Varietal, scales = "free_y", ncol = 1)
+```
+
+## 7. About
+
+
+**Data.** The data is of the Australian wine monthly sales by varietal (wine type), from the years 1980-1994 (`AustralianWines.csv`). The app studies the wine selection of Red, Sparkling and Dry white.
+
+**Split.** The data was split on a training and a validation data set. This is in order for our models to learn and accurately forecast future monthly wine sales. The Training data ranges through years January 1980 to December 1992. the validation data ranges throught years January 1993 to December 1994.
+
+**Models.** For each varietal, three time series model types were chosen to understand how each algorithm learn the data and these models are: Time Series Linear Model (TSLM), Exponential Time Series (ETS) and Autoregressive Integrated Moving Average (ARIMA).
+
+**Evaluation.** Using the accuracy function we can evaluate model metrics RMSE, MAE, MPE and MAPE on training and validation.
+The "best" model is the one with the lowest validation RMSE.
+
+**Reproducing the figures.** Pick the varietal(s) and the forecast horizon in the sidebar. The plot and tables update to match.
+
+**Caveats.** The validation window is only 24 months per series, so
+model rankings can change with a different split.
+
+
+
+
+<!-- Keep this entire document to **≤ 2 pages** including screenshots. Remove any guidance text before submitting. -->
+
+## Part I — Links and Description (required)
+
+-   **Deployed Shiny App URL:** <https://...>
+-   **Code URL:** (choose one)
+    -   GitHub repository: <https://github.com/...>
+    -   or posit.cloud project (ensure instructor access): <https://posit.cloud/...>
+
+<!-- Briefly describe your app , It's main features and how to use it. -->
+
+
+## Part II — Data Story (≤ 2 pages total)
+
+```{=html}
+<!-- Insight (2–3 sentences, concise)
+State your key finding and why it matters. Example: “Sparkling shows consistent December spikes; ETS(M,A,M) outperforms ARIMA on validation RMSE, so it’s the more reliable seasonal model for forward planning.” -->
+```
+
+```{=html}
+<!-- Evidence (screenshots + narrative + minimal tables) 
+Insert screenshots from your app that support your insight. Use short, descriptive captions and list the app inputs so we can reproduce each figure. -->
+```
+
+------------------------------------------------------------------------
+
+```{=html}
+<!-- Optional references section (remove if not used). To use APA, add a CSL file and bibliography in your project and uncomment below.
+# References
+-->
+```

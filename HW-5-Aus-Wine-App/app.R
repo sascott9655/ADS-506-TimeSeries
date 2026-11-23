@@ -27,6 +27,19 @@ training   <- filter(aus_wine_ts, year(Month) <= train_end)
 validation <- filter(aus_wine_ts, year(Month) > train_end)
 n_val      <- n_distinct(validation$Month)
 
+arima_check <- tryCatch(
+  training |>
+    filter(Varietal == "Red") |>
+    model(arima = ARIMA(Sales), .safely = FALSE),
+  error = function(e) e
+)
+if (inherits(arima_check, "error")) {
+  message("ARIMA ERROR: ", conditionMessage(arima_check))
+  message("ARIMA CALL: ", paste(deparse(conditionCall(arima_check)), collapse = " "))
+} else {
+  message("ARIMA fit OK on Red")
+}
+
 # ---- Models (fit once at startup) ---------------------------------------------
 
 fit_models <- function(data) {
